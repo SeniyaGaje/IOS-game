@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tap Rush</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <section class="top-bar" aria-label="Game status">
+        <div class="stat">
+          <span class="stat-label">Score</span>
+          <strong id="score">0</strong>
+        </div>
+        <div class="stat timer-stat">
+          <span class="stat-label">Time</span>
+          <strong><span id="timer">10</span>s</strong>
+        </div>
+        <div class="stat">
+          <span class="stat-label">High Score</span>
+          <strong id="highScore">0</strong>
+        </div>
+      </section>
+
+      <section class="stage" aria-labelledby="gameTitle">
+        <p id="roundState" class="round-state">Ready</p>
+        <h1 id="gameTitle">Tap Rush</h1>
+        <p class="game-note">Tap the button as many times as you can before the 10-second timer ends.</p>
+
+        <button id="tapButton" class="tap-button" type="button" aria-label="Tap button">
+          <span class="tap-word">TAP</span>
+          <span id="tapHint" class="tap-hint">First tap starts the clock</span>
+        </button>
+      </section>
+
+      <section id="gameOverPanel" class="game-over-panel" aria-live="polite" hidden>
+        <div class="result-card">
+          <p class="round-state">Game Over</p>
+          <h2 id="resultTitle">Time is up</h2>
+          <p class="final-score">Final score: <strong id="finalScore">0</strong></p>
+          <p id="highScoreMessage" class="high-score-message">Try to beat your high score.</p>
+          <button id="playAgainButton" class="play-again-button" type="button">Play Again</button>
+        </div>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
