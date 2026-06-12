@@ -25,5 +25,7 @@ This folder contains the SwiftUI version of the JavaScript Tap Rush game.
 - Final score game-over screen
 - Play Again restart button
 - High score saved using `@AppStorage`
+- Combo system: taps within 0.5 seconds increase the multiplier
+- Trap colour: green gives double combo points, grey subtracts combo points
 
 You need macOS and Xcode to build, run, or deploy this on an iOS device.

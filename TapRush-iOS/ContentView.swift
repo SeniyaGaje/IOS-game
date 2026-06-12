@@ -6,8 +6,15 @@ private enum GameState {
     case over
 }
 
+private enum TrapState {
+    case bonus
+    case penalty
+}
+
 struct ContentView: View {
     private let roundLength: TimeInterval = 10
+    private let comboWindow: TimeInterval = 0.5
+    private let trapInterval: TimeInterval = 2.5
     private let timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
 
     @AppStorage("tap-rush-high-score") private var highScore = 0
@@ -19,6 +26,11 @@ struct ContentView: View {
     @State private var endTime = Date()
     @State private var resultMessage = "Try to beat your high score."
     @State private var isPressed = false
+    @State private var comboMultiplier = 1
+    @State private var lastTapTime: Date?
+    @State private var trapState: TrapState = .bonus
+    @State private var nextTrapSwitchTime = Date()
+    @State private var lastPoints = 0
 
     var body: some View {
         ZStack {
@@ -51,11 +63,16 @@ struct ContentView: View {
                         .lineLimit(1)
                         .foregroundStyle(.white)
 
-                    Text("Tap the button as many times as you can before the 10-second timer ends.")
+                    Text("Tap quickly to build combo. Green gives double points, grey takes points away.")
                         .font(.body)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
+
+                    Text(lastTapText)
+                        .font(.headline.weight(.black))
+                        .foregroundStyle(lastTapColor)
+                        .frame(minHeight: 24)
 
                     Button(action: handleTap) {
                         VStack(spacing: 8) {
@@ -72,20 +89,9 @@ struct ContentView: View {
                         .frame(width: 255, height: 255)
                         .background(
                             Circle()
-                                .fill(
-                                    RadialGradient(
-                                        colors: [
-                                            Color(red: 0.66, green: 1.0, blue: 0.72),
-                                            Color(red: 0.31, green: 0.83, blue: 0.42),
-                                            Color(red: 0.08, green: 0.59, blue: 0.23)
-                                        ],
-                                        center: .topLeading,
-                                        startRadius: 12,
-                                        endRadius: 250
-                                    )
-                                )
+                                .fill(buttonGradient)
                         )
-                        .shadow(color: Color(red: 0.05, green: 0.39, blue: 0.15), radius: 0, x: 0, y: isPressed ? 6 : 16)
+                        .shadow(color: buttonDepthColor, radius: 0, x: 0, y: isPressed ? 6 : 16)
                         .shadow(color: .black.opacity(0.38), radius: 26, x: 0, y: isPressed ? 14 : 24)
                         .scaleEffect(isPressed ? 0.97 : 1)
                         .offset(y: isPressed ? 9 : 0)
@@ -119,10 +125,17 @@ struct ContentView: View {
     }
 
     private var scoreBar: some View {
-        HStack(spacing: 10) {
-            StatBox(title: "Score", value: "\(score)")
-            StatBox(title: "Time", value: "\(secondsRemaining)s", valueColor: .yellow)
-            StatBox(title: "High Score", value: "\(highScore)")
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                StatBox(title: "Score", value: "\(score)")
+                StatBox(title: "Time", value: "\(secondsRemaining)s", valueColor: .yellow)
+                StatBox(title: "High Score", value: "\(highScore)")
+            }
+
+            HStack(spacing: 10) {
+                StatBox(title: "Combo", value: "x\(comboMultiplier)", valueColor: .green)
+                StatBox(title: "Button", value: trapTitle, valueColor: trapTextColor)
+            }
         }
     }
 
@@ -188,27 +201,98 @@ struct ContentView: View {
         case .ready:
             return "First tap starts the clock"
         case .running:
-            return "Keep tapping"
+            return trapState == .bonus ? "Bonus x2" : "Penalty -combo"
         case .over:
             return "Time is up"
         }
     }
 
+    private var trapTitle: String {
+        trapState == .bonus ? "Bonus" : "Penalty"
+    }
+
+    private var trapTextColor: Color {
+        trapState == .bonus ? .green : Color(red: 0.78, green: 0.80, blue: 0.82)
+    }
+
+    private var buttonGradient: RadialGradient {
+        if trapState == .bonus {
+            return RadialGradient(
+                colors: [
+                    Color(red: 0.66, green: 1.0, blue: 0.72),
+                    Color(red: 0.31, green: 0.83, blue: 0.42),
+                    Color(red: 0.08, green: 0.59, blue: 0.23)
+                ],
+                center: .topLeading,
+                startRadius: 12,
+                endRadius: 250
+            )
+        }
+
+        return RadialGradient(
+            colors: [
+                Color(red: 0.96, green: 0.97, blue: 0.98),
+                Color(red: 0.65, green: 0.68, blue: 0.71),
+                Color(red: 0.38, green: 0.42, blue: 0.45)
+            ],
+            center: .topLeading,
+            startRadius: 12,
+            endRadius: 250
+        )
+    }
+
+    private var buttonDepthColor: Color {
+        if trapState == .bonus {
+            return Color(red: 0.05, green: 0.39, blue: 0.15)
+        }
+
+        return Color(red: 0.25, green: 0.27, blue: 0.30)
+    }
+
+    private var lastTapText: String {
+        let sign = lastPoints > 0 ? "+" : ""
+        return "Last tap: \(sign)\(lastPoints)"
+    }
+
+    private var lastTapColor: Color {
+        if lastPoints > 0 {
+            return .green
+        }
+
+        if lastPoints < 0 {
+            return Color(red: 0.78, green: 0.80, blue: 0.82)
+        }
+
+        return .secondary
+    }
+
     private func handleTap() {
+        let now = Date()
+
         guard gameState != .over else {
             return
         }
 
-        if gameState == .running && Date() >= endTime {
+        if gameState == .running && now >= endTime {
             finishRound()
             return
         }
 
         if gameState == .ready {
-            startRound()
+            startRound(now: now)
         }
 
-        score += 1
+        if let lastTapTime = lastTapTime, now.timeIntervalSince(lastTapTime) <= comboWindow {
+            comboMultiplier += 1
+        } else {
+            comboMultiplier = 1
+        }
+
+        lastTapTime = now
+
+        let points = trapState == .bonus ? comboMultiplier * 2 : -comboMultiplier
+        score = max(0, score + points)
+        lastPoints = points
 
         isPressed = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.09) {
@@ -216,9 +300,12 @@ struct ContentView: View {
         }
     }
 
-    private func startRound() {
+    private func startRound(now: Date = Date()) {
         gameState = .running
-        endTime = Date().addingTimeInterval(roundLength)
+        endTime = now.addingTimeInterval(roundLength)
+        nextTrapSwitchTime = now.addingTimeInterval(trapInterval)
+        trapState = .bonus
+        lastTapTime = nil
         secondsRemaining = Int(roundLength)
     }
 
@@ -229,6 +316,15 @@ struct ContentView: View {
 
         let remaining = max(0, endTime.timeIntervalSince(now))
         secondsRemaining = Int(ceil(remaining))
+
+        if let lastTapTime = lastTapTime, now.timeIntervalSince(lastTapTime) > comboWindow, comboMultiplier != 1 {
+            comboMultiplier = 1
+        }
+
+        if now >= nextTrapSwitchTime {
+            trapState = trapState == .bonus ? .penalty : .bonus
+            nextTrapSwitchTime = now.addingTimeInterval(trapInterval)
+        }
 
         if remaining <= 0 {
             finishRound()
@@ -262,6 +358,11 @@ struct ContentView: View {
         endTime = Date()
         resultMessage = "Try to beat your high score."
         isPressed = false
+        comboMultiplier = 1
+        lastTapTime = nil
+        trapState = .bonus
+        nextTrapSwitchTime = Date()
+        lastPoints = 0
     }
 }
 

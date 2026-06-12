@@ -21,14 +21,25 @@
           <span class="stat-label">High Score</span>
           <strong id="highScore">0</strong>
         </div>
+        <div class="stat">
+          <span class="stat-label">Combo</span>
+          <strong id="combo">x1</strong>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Button</span>
+          <strong id="trapState">Bonus</strong>
+        </div>
       </section>
 
       <section class="stage" aria-labelledby="gameTitle">
         <p id="roundState" class="round-state">Ready</p>
         <h1 id="gameTitle">Tap Rush</h1>
-        <p class="game-note">Tap the button as many times as you can before the 10-second timer ends.</p>
+        <p class="game-note">
+          Tap quickly to build combo. Green gives double points, grey takes points away.
+        </p>
+        <p id="pointFeedback" class="point-feedback">Last tap: 0</p>
 
-        <button id="tapButton" class="tap-button" type="button" aria-label="Tap button">
+        <button id="tapButton" class="tap-button is-bonus" type="button" aria-label="Tap button">
           <span class="tap-word">TAP</span>
           <span id="tapHint" class="tap-hint">First tap starts the clock</span>
         </button>
